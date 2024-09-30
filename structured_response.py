@@ -1,6 +1,8 @@
 import json
 import requests
 import yaml
+import csv
+import io
 try:
     from bs4 import BeautifulSoup
 except ImportError:
@@ -43,6 +45,13 @@ def is_valid_yaml(structure):
     except yaml.YAMLError:
         return False
 
+def is_valid_csv(structure):
+    try:
+        csv.reader(io.StringIO(structure))
+        return True
+    except csv.Error:
+        return False
+
 def extract_structure(text, structure_type):
     if structure_type == 'json':
         start = text.find('{')
@@ -50,8 +59,8 @@ def extract_structure(text, structure_type):
     elif structure_type in ['html', 'xml']:
         start = text.find('<')
         end = text.rfind('>') + 1
-    elif structure_type == 'yaml':
-        return text  # YAML doesn't have clear delimiters, so we return the whole text
+    elif structure_type in ['yaml', 'csv']:
+        return text  # YAML and CSV don't have clear delimiters, so we return the whole text
     else:
         return None
 
@@ -59,7 +68,7 @@ def extract_structure(text, structure_type):
         return text[start:end]
     return None
 
-def process_structured_output(data, structure, structure_type):
+def process_structured_output(data, structure, structure_type, verbose=False):
     prompt = f"Given the following data:\n{data}\n\nPlease fill out this {structure_type.upper()} structure. DO NOT DEVIATE FROM THE STRUCTURE EVEN TO IMPROVE IT, DO NOT LEAVE COMMENTS INSIDE THE {structure_type.upper()}:\n{structure}\n\nProvide only the filled {structure_type.upper()} structure in your response."
     output = None
     max_attempts = 5
@@ -69,11 +78,13 @@ def process_structured_output(data, structure, structure_type):
         'json': is_valid_json,
         'html': is_valid_html,
         'xml': is_valid_xml,
-        'yaml': is_valid_yaml
+        'yaml': is_valid_yaml,
+        'csv': is_valid_csv
     }
 
     for attempt in range(max_attempts):
-        print(f"\nAttempt {attempt + 1}:")
+        if verbose:
+            print(f"\nAttempt {attempt + 1}:")
         response = query_ollama(prompt)
         output = extract_structure(response, structure_type)
         
@@ -83,18 +94,21 @@ def process_structured_output(data, structure, structure_type):
             "extracted_structure": output
         })
         
-        print(f"Extracted {structure_type.upper()}:\n{output}")
+        if verbose:
+            print(f"Extracted {structure_type.upper()}:\n{output}")
         
         if output and validity_functions[structure_type](output):
             return output, attempt + 1, attempts_log
 
-        print(f"Invalid {structure_type.upper()}. Retrying...")
+        if verbose:
+            print(f"Invalid {structure_type.upper()}. Retrying...")
         prompt = f"The previous response was not valid {structure_type.upper()}. Please correctly fit the data into the {structure_type.upper()} structure. DO NOT DEVIATE FROM THE STRUCTURE EVEN TO IMPROVE IT, DO NOT LEAVE COMMENTS INSIDE THE {structure_type.upper()}:\n{structure}\n\nFilled with the data:\n{data}"
     
-    print(f"Failed to generate valid {structure_type.upper()} after maximum attempts.")
+    if verbose:
+        print(f"Failed to generate valid {structure_type.upper()} after maximum attempts.")
     return None, max_attempts, attempts_log
 
-def main():
+def main(verbose=False):
     test_cases = [
         {
             "name": "JSON test",
@@ -119,6 +133,12 @@ def main():
             "data": "The book 'To Kill a Mockingbird' was written by Harper Lee in 1960",
             "structure": "book:\n  title:\n  author:\n  year:",
             "type": "yaml"
+        },
+        {
+            "name": "CSV test",
+            "data": "John is 30 years old, Mary is 25 years old, and Bob is 35 years old",
+            "structure": "Name,Age\n,,\n,,\n,,",
+            "type": "csv"
         }
     ]
 
@@ -128,15 +148,16 @@ def main():
         print(f"Structure: {test['structure']}")
         print(f"Type: {test['type']}")
         
-        result, attempts, log = process_structured_output(test['data'], test['structure'], test['type'])
+        result, attempts, log = process_structured_output(test['data'], test['structure'], test['type'], verbose)
         
         print(f"Result (after {attempts} attempts):")
         print(result)
-        print("Attempts log:")
-        for entry in log:
-            print(f"  Attempt {entry['attempt']}:")
-            print(f"    Response: {entry['response'][:100]}...")
-            print(f"    Extracted structure: {entry['extracted_structure'][:100]}...")
+        if verbose:
+            print("Attempts log:")
+            for entry in log:
+                print(f"  Attempt {entry['attempt']}:")
+                print(f"    Response: {entry['response'][:100]}...")
+                print(f"    Extracted structure: {entry['extracted_structure'][:100]}...")
         
         if result:
             print("Test passed!")
@@ -144,4 +165,9 @@ def main():
             print("Test failed.")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate structured responses using Ollama API")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    args = parser.parse_args()
+    
+    main(verbose=args.verbose)
