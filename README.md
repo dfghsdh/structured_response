@@ -1,6 +1,6 @@
 # Structured Response Generator
 
-This project contains a Python script that generates structured responses (JSON, HTML, XML, YAML) based on given data and structure templates using the Ollama API.
+This project contains a Python script that generates structured responses (JSON, HTML, XML, YAML, CSV) based on given data and structure templates using the Ollama API.
 
 ## Overview
 
@@ -11,11 +11,12 @@ The `structured_response.py` script is designed to:
 3. Validate the generated response
 4. Retry if the response is invalid (up to 5 attempts)
 
-The script supports four types of structured outputs:
+The script supports five types of structured outputs:
 - JSON
 - HTML
 - XML
 - YAML
+- CSV
 
 ## Requirements
 
@@ -48,9 +49,27 @@ The script supports four types of structured outputs:
    - Install required packages
    - Run the Python script
 
+   To run with verbose output, use:
+
+   ```
+   ./setup_and_run.sh --verbose
+   ```
+
+4. Alternatively, after setting up the environment, you can run the Python script directly:
+
+   ```
+   python structured_response.py
+   ```
+
+   Or with verbose output:
+
+   ```
+   python structured_response.py --verbose
+   ```
+
 ## How It Works
 
-1. The script defines test cases for each supported structure type (JSON, HTML, XML, YAML).
+1. The script defines test cases for each supported structure type (JSON, HTML, XML, YAML, CSV).
 2. For each test case, it calls the `process_structured_output` function.
 3. This function sends a prompt to the Ollama API, requesting a structured response.
 4. The response is extracted and validated.
@@ -61,6 +80,15 @@ The script supports four types of structured outputs:
 
 You can modify the `test_cases` in the `main()` function of `structured_response.py` to test different data and structures.
 
+## Verbose Output
+
+Use the `--verbose` or `-v` flag to enable detailed output, including:
+- Each attempt's response from the Ollama API
+- Extracted structures for each attempt
+- Detailed logs of the processing steps
+
+This can be helpful for debugging or understanding the script's behavior in detail.
+
 ## Troubleshooting
 
 If you encounter any issues:
@@ -68,6 +96,7 @@ If you encounter any issues:
 2. Check that all required packages are installed correctly.
 3. Verify that your Python version is compatible (3.x).
 4. Review the console output for any error messages.
+5. Try running with the `--verbose` flag for more detailed information.
 
 ## Contributing
 
