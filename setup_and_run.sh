@@ -35,7 +35,11 @@ fi
 pip list
 
 # Run the Python script
-python structured_response.py
+if [ "$1" == "--verbose" ]; then
+    python structured_response.py --verbose
+else
+    python structured_response.py
+fi
 
 # Deactivate the virtual environment
 deactivate
